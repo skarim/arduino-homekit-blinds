@@ -26,7 +26,7 @@ double startingPosition = 0;
 double currentPosition = 0;
 double desiredPosition = 0;
 bool spinning = false;
-int direction; // -1 is closing, 1 is opening
+int direction; // 1 is closing, -1 is opening
 
 // stores the last time a cycle was initiated
 long previousMillis = 0;
@@ -74,7 +74,7 @@ void startSpinning(double newPosition){
 
 void runServer(){
   // get position
-  server.on("/current_position", HTTP_GET, [] (AsyncWebServerRequest *request) {
+  server.on("/position", HTTP_GET, [] (AsyncWebServerRequest *request) {
     digitalWrite(LED_BUILTIN, LOW);
     request->send(200, "text/plain", String(currentPosition));
     digitalWrite(LED_BUILTIN, HIGH);
@@ -88,6 +88,14 @@ void runServer(){
       startSpinning(newPosition);
     }
     request->send(204);
+    digitalWrite(LED_BUILTIN, HIGH);
+  });
+
+  // get state
+  server.on("/state", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    digitalWrite(LED_BUILTIN, LOW);
+    int state = spinning ? (direction == -1 ? 0 : 1) : 2;
+    request->send(200, "text/plain", String(state));
     digitalWrite(LED_BUILTIN, HIGH);
   });
 
