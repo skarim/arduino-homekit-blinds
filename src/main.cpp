@@ -113,6 +113,7 @@ void setup(){
 
   // wifi connect
   WiFi.mode(WIFI_STA);
+  WiFi.hostname(HOSTNAME);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Failed!");
@@ -121,7 +122,6 @@ void setup(){
 
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
-  WiFi.hostname(HOSTNAME);
 
   digitalWrite(2, HIGH);
 
