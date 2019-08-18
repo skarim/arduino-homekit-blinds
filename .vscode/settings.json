@@ -1,0 +1,9 @@
+{
+    "terminal.integrated.env.osx": {
+        "PATH": "/Users/sameenkarim/.platformio/penv/bin:/Users/sameenkarim/.platformio/penv:/Library/Frameworks/Python.framework/Versions/3.7/bin:/Users/sameenkarim/.rvm/gems/ruby-2.4.1/bin:/Users/sameenkarim/.rvm/gems/ruby-2.4.1@global/bin:/Users/sameenkarim/.rvm/rubies/ruby-2.4.1/bin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin:/Users/sameenkarim/.rvm/bin",
+        "PLATFORMIO_CALLER": "vscode"
+    },
+    "files.associations": {
+        "functional": "cpp"
+    }
+}
