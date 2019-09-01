@@ -13,7 +13,8 @@
 AsyncWebServer server(80);
 
 // milliseconds of rotation per 1% change in blinds
-const unsigned int millisPerPercent = 1000;
+const unsigned int milliesPerPercentClose = (SECONDS_TO_CLOSE * 1000) / 100;
+const unsigned int millisPerPercentOpen = (SECONDS_TO_OPEN * 1000) / 100;
 
 const char* SET_POSITION_PARAM = "position";
 
@@ -52,6 +53,7 @@ void startSpinning(double newPosition){
     Serial.println(desiredPosition);
 
     // calculate spin cycle length (ms)
+    unsigned int millisPerPercent = desiredPosition > currentPosition ? millisPerPercentOpen : milliesPerPercentClose;
     interval = (long)(abs(desiredPosition - currentPosition) * millisPerPercent);
     Serial.print("calculated interval: ");
     Serial.println(interval);
