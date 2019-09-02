@@ -16,7 +16,8 @@ AsyncWebServer server(80);
 const unsigned int milliesPerPercentClose = (SECONDS_TO_CLOSE * 1000) / 100;
 const unsigned int millisPerPercentOpen = (SECONDS_TO_OPEN * 1000) / 100;
 
-const char* SET_POSITION_PARAM = "position";
+// milliseconds of spinning, after which the servo has to be reset
+const unsigned int millisPerServoReset = (SERVO_RESET_EVERY_SECONDS * 1000);
 
 // servo configs
 const int servoPin = 2;
@@ -28,9 +29,13 @@ double currentPosition = 0;
 double desiredPosition = 0;
 bool spinning = false;
 int direction; // 1 is closing, -1 is opening
+int dutyCycle = 90; // 0 is counter-clockwise, 180 is clockwise
 
 // stores the last time a cycle was initiated
-long previousMillis = 0;
+unsigned long previousMillis = 0;
+
+// stores the last time servo was reset
+unsigned long lastResetMillis = 0;
 
 // calculated interval (ms) of spin cycle
 long interval = 0;
@@ -59,19 +64,29 @@ void startSpinning(double newPosition){
     Serial.println(interval);
 
     // start moving servo in desired direction
-    int dutyCycle = desiredPosition > currentPosition ? 0 : 180;
+    dutyCycle = desiredPosition > currentPosition ? 0 : 180;
     servo.attach(servoPin);
     servo.write(dutyCycle);
 
     // set state vars
     direction = desiredPosition > currentPosition ? 1 : -1;
     previousMillis = currentMillis;
+    lastResetMillis = previousMillis;
     spinning = true;
     startingPosition = currentPosition;
     Serial.print("calculated direction: ");
     Serial.println(direction);
   }
   digitalWrite(LED_BUILTIN, HIGH);
+}
+
+void resetServo(){
+  Serial.println("detatching servo");
+  servo.detach();
+  delay(SERVO_RESET_DELAY_MILLISECONDS);
+  Serial.println("re-attatching servo");
+  servo.attach(servoPin);
+  servo.write(dutyCycle);
 }
 
 void runServer(){
@@ -85,8 +100,8 @@ void runServer(){
   // set position with ?position=N (0 to 100)
   server.on("/set", HTTP_GET, [] (AsyncWebServerRequest *request) {
     digitalWrite(LED_BUILTIN, LOW);
-    if (request->hasParam(SET_POSITION_PARAM)) {
-      double newPosition = request->getParam(SET_POSITION_PARAM)->value().toDouble();
+    if (request->hasParam("position")) {
+      double newPosition = request->getParam("position")->value().toDouble();
       startSpinning(newPosition);
     }
     request->send(204);
@@ -155,6 +170,15 @@ void loop(){
       currentPosition = desiredPosition;
       Serial.println("finished spinning!");
       digitalWrite(2, HIGH);
+    }
+
+    // calculate how long the servo has been spinning for
+    unsigned long spinningMillis = currentMillis - lastResetMillis;
+
+    // reset the servo if we need to
+    if (spinning && spinningMillis >= millisPerServoReset){
+      resetServo();
+      lastResetMillis = currentMillis;
     }
   }
 }
