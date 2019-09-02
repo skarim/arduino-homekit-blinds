@@ -2,7 +2,6 @@
  * Blinds
  *
  * ESP 8266 smart blinds
- * Documentatino TBD
  */
 
 #include <Arduino.h>
@@ -176,7 +175,7 @@ void loop(){
     unsigned long spinningMillis = currentMillis - lastResetMillis;
 
     // reset the servo if we need to
-    if (spinning && spinningMillis >= millisPerServoReset){
+    if (SERVO_RESET_ENABLED && spinning && spinningMillis >= millisPerServoReset){
       resetServo();
       lastResetMillis = currentMillis;
     }
