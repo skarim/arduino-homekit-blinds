@@ -18,9 +18,9 @@
  * and need a 150ms "break" before we can use again
  * 
  * If your servo doesn't require this, set
- * SERVO_RESET_ENABLED to false
+ * SERVO_RESET_REQUIRED to false
  */
-#define SERVO_RESET_ENABLED true
+#define SERVO_RESET_REQUIRED true
 #define SERVO_RESET_EVERY_SECONDS 14
 #define SERVO_RESET_DELAY_MILLISECONDS 150
 
