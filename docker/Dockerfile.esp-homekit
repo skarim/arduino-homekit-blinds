@@ -1,0 +1,19 @@
+FROM skarim/esp-rtos:latest
+
+RUN apt-get update && apt-get install -y git
+
+RUN git clone --recursive https://github.com/maximkulkin/esp-cjson.git /opt/cJSON
+
+RUN git clone --recursive https://github.com/maximkulkin/esp-wolfssl.git /opt/wolfssl
+
+RUN git clone --recursive https://github.com/maximkulkin/esp-homekit.git /opt/homekit
+
+RUN git clone --recursive https://github.com/maximkulkin/esp-http-parser.git /opt/http-parser
+
+RUN git clone --recursive https://github.com/maximkulkin/esp-wifi-config.git /opt/wifi_config
+
+RUN git clone --recursive https://github.com/pcsaito/WS2812FX-rtos.git /opt/WS2812FX
+
+RUN git clone --recursive https://github.com/maximkulkin/esp-led-status.git /opt/led-status
+
+RUN git clone --recursive https://github.com/maximkulkin/esp-qrcode.git /opt/qrcode

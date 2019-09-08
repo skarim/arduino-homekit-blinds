@@ -1,0 +1,14 @@
+FROM skarim/esp-homekit:latest
+
+ENV SDK_PATH /opt/esp-open-rtos
+ENV ESPPORT /dev/tty.SLAB_USBtoUART
+ENV HOMEKIT_DEBUG 1
+ENV FLASH_MODE dout
+
+ENV LIB_PATH /opt
+
+COPY . /blinds
+
+WORKDIR /blinds
+
+CMD make -C . all && make -C . flash monitor
