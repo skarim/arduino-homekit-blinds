@@ -88,6 +88,18 @@ void resetServo(){
   servo.write(dutyCycle);
 }
 
+void stopSpinning(){
+  if (SERVO_STOP_SIGNAL_REQUIRED){
+    servo.write(SERVO_STOP_DUTYCYCLE);
+    delay(SERVO_STOP_SIGNAL_MILLISECONDS);
+  }
+  servo.detach();
+  spinning = false;
+  currentPosition = desiredPosition;
+  Serial.println("finished spinning!");
+  digitalWrite(2, HIGH);
+}
+
 void runServer(){
   // get position
   server.on("/position", HTTP_GET, [] (AsyncWebServerRequest *request) {
@@ -164,11 +176,7 @@ void loop(){
 
     // if position has been reached or is out of range, stop spinning
     if (currentPosition == desiredPosition || percentCompleted > 1 || currentPosition < 0 || currentPosition > 100){
-      servo.detach();
-      spinning = false;
-      currentPosition = desiredPosition;
-      Serial.println("finished spinning!");
-      digitalWrite(2, HIGH);
+      stopSpinning();
     }
 
     // calculate how long the servo has been spinning for
