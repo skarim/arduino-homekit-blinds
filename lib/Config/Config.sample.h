@@ -17,10 +17,9 @@
  * MG 995/6 servos stop spinning after 14 seconds
  * and need a 150ms "break" before we can use again
  * 
- * If your servo doesn't require this, set
- * SERVO_RESET_REQUIRED to false
+ * Set SERVO_RESET_REQUIRED to true if your servo requires this
  */
-#define SERVO_RESET_REQUIRED true
+#define SERVO_RESET_REQUIRED false
 #define SERVO_RESET_EVERY_SECONDS 14
 #define SERVO_RESET_DELAY_MILLISECONDS 150
 
@@ -31,9 +30,8 @@
  * Need to set duty cycle to zero point (usually 90)
  * for a few ms for it stop spinning
  * 
- * If your servo doesn't require this, set
- * SERVO_STOP_SIGNAL_REQUIRED to false
+ * Set SERVO_STOP_SIGNAL_REQUIRED to true if your servo requires this
  */
-#define SERVO_STOP_SIGNAL_REQUIRED true
+#define SERVO_STOP_SIGNAL_REQUIRED false
 #define SERVO_STOP_DUTYCYCLE 90
 #define SERVO_STOP_SIGNAL_MILLISECONDS 50
