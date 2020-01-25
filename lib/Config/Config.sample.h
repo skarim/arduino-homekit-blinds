@@ -8,8 +8,8 @@
 /**
  * Seconds it takes to open/close your blinds
  */
-#define SECONDS_TO_CLOSE 10
-#define SECONDS_TO_OPEN 15
+#define DEFAULT_SECONDS_TO_CLOSE 10
+#define DEFAULT_SECONDS_TO_OPEN 15
 
 /**
  * Servo Reset Settings

@@ -6,14 +6,25 @@
 
 #include <Arduino.h>
 #include <Servo.h>
+#include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
 #include <Config.h>
 
 AsyncWebServer server(80);
 
-// milliseconds of rotation per 1% change in blinds
-const unsigned int milliesPerPercentClose = (SECONDS_TO_CLOSE * 1000) / 100;
-const unsigned int millisPerPercentOpen = (SECONDS_TO_OPEN * 1000) / 100;
+// addresses of data stored in EEPROM
+struct {
+  int initialized = 0;
+  int secondsToClose = sizeof(bool);
+  int secondsToOpen = sizeof(bool) + sizeof(unsigned int);
+  int currentPosition = sizeof(bool) + (sizeof(unsigned int) * 2);
+} eepromAddresses;
+
+// default timing settings
+unsigned int secondsToClose = DEFAULT_SECONDS_TO_CLOSE;
+unsigned int secondsToOpen = DEFAULT_SECONDS_TO_OPEN;
+unsigned int milliesPerPercentClose = (secondsToClose * 1000) / 100;
+unsigned int millisPerPercentOpen = (secondsToOpen * 1000) / 100;
 
 // milliseconds of spinning, after which the servo has to be reset
 const unsigned int millisPerServoReset = (SERVO_RESET_EVERY_SECONDS * 1000);
@@ -96,6 +107,8 @@ void stopSpinning(){
   servo.detach();
   spinning = false;
   currentPosition = desiredPosition;
+  EEPROM.put(eepromAddresses.currentPosition, currentPosition);
+  EEPROM.commit();
   Serial.println("finished spinning!");
   digitalWrite(2, HIGH);
 }
@@ -137,6 +150,7 @@ void runServer(){
 
 void setup(){
   Serial.begin(115200);
+  EEPROM.begin(512);
 
   // stop servo from spinning while turning on
   servo.detach();
@@ -158,6 +172,33 @@ void setup(){
 
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+
+  // get stored settings or use defaults
+  bool initialized = false;
+  EEPROM.get(eepromAddresses.initialized, initialized);
+  if (initialized) {
+    Serial.println("Using settings & position stored on EEPROM");
+    EEPROM.get(eepromAddresses.secondsToClose, secondsToClose);
+    EEPROM.get(eepromAddresses.secondsToOpen, secondsToOpen);
+    EEPROM.get(eepromAddresses.currentPosition, currentPosition);
+  } else {
+    EEPROM.put(eepromAddresses.initialized, true);
+    EEPROM.put(eepromAddresses.secondsToClose, secondsToClose);
+    EEPROM.put(eepromAddresses.secondsToOpen, secondsToOpen);
+    EEPROM.put(eepromAddresses.currentPosition, currentPosition);
+    EEPROM.commit();
+  }
+
+  // milliseconds of rotation per 1% change in blinds
+  milliesPerPercentClose = (secondsToClose * 1000) / 100;
+  millisPerPercentOpen = (secondsToOpen * 1000) / 100;
+
+  Serial.print("Initial position: ");
+  Serial.println(currentPosition);
+  Serial.print("Seconds to close: ");
+  Serial.println(secondsToClose);
+  Serial.print("Seconds to open: ");
+  Serial.println(secondsToOpen);
 
   digitalWrite(2, HIGH);
 
