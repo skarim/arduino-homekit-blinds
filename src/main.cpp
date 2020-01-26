@@ -16,13 +16,13 @@ AsyncWebServer server(80);
 struct {
   int initialized = 0;
   int secondsToClose = sizeof(bool);
-  int secondsToOpen = sizeof(bool) + sizeof(unsigned int);
-  int currentPosition = sizeof(bool) + (sizeof(unsigned int) * 2);
+  int secondsToOpen = sizeof(bool) + sizeof(float);
+  int currentPosition = sizeof(bool) + (sizeof(float) * 2);
 } eepromAddresses;
 
 // default timing settings
-unsigned int secondsToClose = DEFAULT_SECONDS_TO_CLOSE;
-unsigned int secondsToOpen = DEFAULT_SECONDS_TO_OPEN;
+float secondsToClose = DEFAULT_SECONDS_TO_CLOSE;
+float secondsToOpen = DEFAULT_SECONDS_TO_OPEN;
 unsigned int milliesPerPercentClose = (secondsToClose * 1000) / 100;
 unsigned int millisPerPercentOpen = (secondsToOpen * 1000) / 100;
 
@@ -138,6 +138,32 @@ void runServer(){
     int state = spinning ? (direction == -1 ? 0 : 1) : 2;
     request->send(200, "text/plain", String(state));
     digitalWrite(LED_BUILTIN, HIGH);
+  });
+
+  // update timing settings with ?secondsToClose=X&secondsToOpen=Y (positive float)
+  server.on("/timing", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    if (currentPosition > 0 && currentPosition < 100) {
+      request->send(409, "text/plain", "Cannot update timing now. Move blinds to fully closed or open position and try again.");
+      return;
+    }
+    if (request->hasParam("secondsToClose")) {
+      secondsToClose = request->getParam("secondsToClose")->value().toFloat();
+      EEPROM.put(eepromAddresses.secondsToClose, secondsToClose);
+      milliesPerPercentClose = (secondsToClose * 1000) / 100;
+    }
+    if (request->hasParam("secondsToOpen")) {
+      secondsToOpen = request->getParam("secondsToOpen")->value().toFloat();
+      EEPROM.put(eepromAddresses.secondsToOpen, secondsToOpen);
+      millisPerPercentOpen = (secondsToOpen * 1000) / 100;
+    }
+    EEPROM.commit();
+    request->send(204);
+  });
+
+  // get timing settings
+  server.on("/settings", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String response = "Seconds to close: " + String(secondsToClose) + "\nSeconds to open: " + String(secondsToOpen);
+    request->send(200, "text/plain", response);
   });
 
   // 404
