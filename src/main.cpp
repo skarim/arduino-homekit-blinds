@@ -10,6 +10,9 @@
 #include <ESPAsyncWebServer.h>
 #include <Config.h>
 
+#define LED_ESP 2
+#define LED_MCU 16
+
 AsyncWebServer server(80);
 
 // addresses of data stored in EEPROM
@@ -51,7 +54,6 @@ unsigned long lastResetMillis = 0;
 long interval = 0;
 
 void startSpinning(double newPosition){
-  digitalWrite(LED_BUILTIN, LOW);
   if (newPosition != desiredPosition || newPosition != currentPosition) {
     if (spinning) {
       // detach from servo before spinning again
@@ -87,7 +89,6 @@ void startSpinning(double newPosition){
     Serial.print("calculated direction: ");
     Serial.println(direction);
   }
-  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void resetServo(){
@@ -110,34 +111,34 @@ void stopSpinning(){
   EEPROM.put(eepromAddresses.currentPosition, currentPosition);
   EEPROM.commit();
   Serial.println("finished spinning!");
-  digitalWrite(2, HIGH);
+  digitalWrite(LED_ESP, HIGH);
 }
 
 void runServer(){
   // get position
   server.on("/position", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_MCU, LOW);
     request->send(200, "text/plain", String(currentPosition));
-    digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(LED_MCU, HIGH);
   });
 
   // set position with ?position=N (0 to 100)
   server.on("/set", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_MCU, LOW);
     if (request->hasParam("position")) {
       double newPosition = request->getParam("position")->value().toDouble();
       startSpinning(newPosition);
     }
     request->send(204);
-    digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(LED_MCU, HIGH);
   });
 
   // get state
   server.on("/state", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_MCU, LOW);
     int state = spinning ? (direction == -1 ? 0 : 1) : 2;
     request->send(200, "text/plain", String(state));
-    digitalWrite(LED_BUILTIN, HIGH);
+    digitalWrite(LED_MCU, HIGH);
   });
 
   // update timing settings with ?secondsToClose=X&secondsToOpen=Y (positive float)
@@ -182,10 +183,11 @@ void setup(){
   servo.detach();
 
   // initialize LED pins as outputs
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(2, OUTPUT);
+  pinMode(LED_ESP, OUTPUT);
+  pinMode(LED_MCU, OUTPUT);
 
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_ESP, HIGH);
+  digitalWrite(LED_MCU, LOW);
 
   // wifi connect
   WiFi.mode(WIFI_STA);
@@ -226,11 +228,9 @@ void setup(){
   Serial.print("Seconds to open: ");
   Serial.println(secondsToOpen);
 
-  digitalWrite(2, HIGH);
-
   runServer();
 
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_MCU, HIGH);
 }
 
 void loop(){
