@@ -10,10 +10,13 @@
 #include <ESPAsyncWebServer.h>
 #include <Config.h>
 
-#define LED_ESP 2
-#define LED_MCU 16
+#define LED_ESP_PIN 2
+#define LED_MCU_PIN 16
+#define RELAY_PIN 5
+#define SERVO_PIN 4
 
 AsyncWebServer server(80);
+Servo servo;
 
 // addresses of data stored in EEPROM
 struct {
@@ -31,10 +34,6 @@ unsigned int millisPerPercentOpen = (secondsToOpen * 1000) / 100;
 
 // milliseconds of spinning, after which the servo has to be reset
 const unsigned int millisPerServoReset = (SERVO_RESET_EVERY_SECONDS * 1000);
-
-// servo configs
-const int servoPin = 2;
-Servo servo;
 
 // blind position / state vars
 double startingPosition = 0;
@@ -75,9 +74,12 @@ void startSpinning(double newPosition){
     Serial.print("calculated interval: ");
     Serial.println(interval);
 
+    // turn on relay_PIN
+    digitalWrite(RELAY_PIN, HIGH);
+
     // start moving servo in desired direction
     dutyCycle = desiredPosition > currentPosition ? 0 : 180;
-    servo.attach(servoPin);
+    servo.attach(SERVO_PIN);
     servo.write(dutyCycle);
 
     // set state vars
@@ -88,6 +90,7 @@ void startSpinning(double newPosition){
     startingPosition = currentPosition;
     Serial.print("calculated direction: ");
     Serial.println(direction);
+    digitalWrite(LED_ESP_PIN, LOW);
   }
 }
 
@@ -96,7 +99,7 @@ void resetServo(){
   servo.detach();
   delay(SERVO_RESET_DELAY_MILLISECONDS);
   Serial.println("re-attatching servo");
-  servo.attach(servoPin);
+  servo.attach(SERVO_PIN);
   servo.write(dutyCycle);
 }
 
@@ -106,39 +109,40 @@ void stopSpinning(){
     delay(SERVO_STOP_SIGNAL_MILLISECONDS);
   }
   servo.detach();
+  digitalWrite(RELAY_PIN, LOW);
   spinning = false;
   currentPosition = desiredPosition;
   EEPROM.put(eepromAddresses.currentPosition, currentPosition);
   EEPROM.commit();
   Serial.println("finished spinning!");
-  digitalWrite(LED_ESP, HIGH);
+  digitalWrite(LED_ESP_PIN, HIGH);
 }
 
 void runServer(){
   // get position
   server.on("/position", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    digitalWrite(LED_MCU, LOW);
+    digitalWrite(LED_MCU_PIN, LOW);
     request->send(200, "text/plain", String(currentPosition));
-    digitalWrite(LED_MCU, HIGH);
+    digitalWrite(LED_MCU_PIN, HIGH);
   });
 
   // set position with ?position=N (0 to 100)
   server.on("/set", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    digitalWrite(LED_MCU, LOW);
+    digitalWrite(LED_MCU_PIN, LOW);
     if (request->hasParam("position")) {
       double newPosition = request->getParam("position")->value().toDouble();
       startSpinning(newPosition);
     }
     request->send(204);
-    digitalWrite(LED_MCU, HIGH);
+    digitalWrite(LED_MCU_PIN, HIGH);
   });
 
   // get state
   server.on("/state", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    digitalWrite(LED_MCU, LOW);
+    digitalWrite(LED_MCU_PIN, LOW);
     int state = spinning ? (direction == -1 ? 0 : 1) : 2;
     request->send(200, "text/plain", String(state));
-    digitalWrite(LED_MCU, HIGH);
+    digitalWrite(LED_MCU_PIN, HIGH);
   });
 
   // update timing settings with ?secondsToClose=X&secondsToOpen=Y (positive float)
@@ -183,11 +187,12 @@ void setup(){
   servo.detach();
 
   // initialize LED pins as outputs
-  pinMode(LED_ESP, OUTPUT);
-  pinMode(LED_MCU, OUTPUT);
+  pinMode(LED_ESP_PIN, OUTPUT);
+  pinMode(LED_MCU_PIN, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
 
-  digitalWrite(LED_ESP, HIGH);
-  digitalWrite(LED_MCU, LOW);
+  digitalWrite(LED_ESP_PIN, HIGH);
+  digitalWrite(LED_MCU_PIN, LOW);
 
   // wifi connect
   WiFi.mode(WIFI_STA);
@@ -230,7 +235,7 @@ void setup(){
 
   runServer();
 
-  digitalWrite(LED_MCU, HIGH);
+  digitalWrite(LED_MCU_PIN, HIGH);
 }
 
 void loop(){
