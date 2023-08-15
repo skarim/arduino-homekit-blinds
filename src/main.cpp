@@ -8,6 +8,7 @@
 #include <TMCStepper.h>
 #include <ESPAsyncWebServer.h>
 #include <Config.h>
+#include "esp_task_wdt.h"
 
 #define LED_PIN 2
 
@@ -27,29 +28,30 @@
 #define STEPS_PER_REV 1600  // number of steps per revolution
 #define MOTOR_CURRENT 2800  // motor current in milliamps
 #define MICROSTEPS    256   // microsteps per step
+#define TOTAL_ROTATIONS 10  // total number of rotations to open/close blinds
 
 #define SERIAL_BAUD_RATE    115200
 
 TMC2209Stepper driver(&SERIAL_PORT, R_SENSE, DRIVER_ADDRESS);
 AsyncWebServer server(80);
+TaskHandle_t MoveStepperTask;
 
 // blinds settings
 unsigned int totalSteps = STEPS_PER_REV * TOTAL_ROTATIONS;
 
-// blind position / state vars
-double startingPosition = 0;
-double currentPosition = 0;
-double desiredPosition = 0;
-bool spinning = false;
-int direction; // 1 is closing, -1 is opening
+// position vars (0 is closed, 100 is open)
+double currentPosition = 100;
+double desiredPosition = 100;
+bool moving = false;
 
 void moveStepper(int steps, int dir) {
   digitalWrite(LED_PIN, HIGH); // turn on light
-  Serial.print("moving ");
+  Serial.print("moving steps: ");
   Serial.println(steps);
 
   int stepsDelay = dir ? STEPS_DELAY_FAST : STEPS_DELAY_SLOW;
 
+  moving = true;
   digitalWrite(EN_PIN, LOW); // enable stepper motor driver
   digitalWrite(DIR_PIN, dir);
   for (int i = 0; i < steps; i++) {
@@ -57,15 +59,72 @@ void moveStepper(int steps, int dir) {
     delayMicroseconds(stepsDelay);
     digitalWrite(STEP_PIN, LOW);
     delayMicroseconds(stepsDelay);
+
+    // update current position
+    int direction = dir == 1 ? -1 : 1;
+    currentPosition = currentPosition + (direction * 1.0 / totalSteps * 100);
   }
+
+  moving = false;
   digitalWrite(EN_PIN, HIGH); // disable stepper motor driver
   digitalWrite(LED_PIN, LOW); // turn off light
+}
+
+void moveBlinds(void * pvParameters) {
+  int dir = 0;
+  int delta = 0;
+  if (desiredPosition > currentPosition) {
+    // move up (opening)
+    dir = 0;
+    delta = desiredPosition - currentPosition;
+  } else if (desiredPosition < currentPosition) {
+    // move down (closing)
+    dir = 1;
+    delta = currentPosition - desiredPosition;
+  }
+  int steps = delta * totalSteps / 100;
+
+  if (steps != 0) {
+    moveStepper(steps, dir);
+  }
+  vTaskDelete(NULL);  // end task
 }
 
 void runServer() {
   // get position
   server.on("/position", HTTP_GET, [] (AsyncWebServerRequest *request) {
     request->send(200, "text/plain", String(currentPosition));
+  });
+
+  // set position
+  server.on("/set", HTTP_POST, [] (AsyncWebServerRequest *request) {
+    if (request->hasParam("position")) {
+      AsyncWebParameter* p = request->getParam("position");
+      desiredPosition = p->value().toDouble();
+      Serial.print("desired position: ");
+      Serial.println(desiredPosition);
+
+      // stop any running tasks
+      if (MoveStepperTask != NULL) {
+        vTaskDelete(MoveStepperTask);
+        MoveStepperTask = NULL;
+      }
+
+      esp_task_wdt_init(60, false);
+      xTaskCreatePinnedToCore(
+        moveBlinds,           // Task function
+        "MoveBlindsTask",     // Task name
+        10000,                // Stack size
+        NULL,                 // Parameters
+        1,                    // Priority
+        &MoveStepperTask,     // Task handle
+        0                     // Core number
+      );
+
+      request->send(204);
+    } else {
+      request->send(400, "text/plain", "Invalid Request");
+    }
   });
 
   server.begin();
@@ -122,19 +181,4 @@ void setup() {
 }
 
 void loop() {
-  uint16_t msread = driver.microsteps();
-  Serial.print(F("Read microsteps via UART to test UART receive : "));
-  Serial.println(msread);
-
-  Serial.println("spin forward - closing"); // closing
-  digitalWrite(EN_PIN, LOW);
-  moveStepper(STEPS_PER_REV*3, 1);
-  digitalWrite(EN_PIN, HIGH);
-  delay(2000); // pause for 2s
-
-  Serial.println("spin backward - opening"); // opening
-  digitalWrite(EN_PIN, LOW);
-  moveStepper(STEPS_PER_REV*3, 0);
-  digitalWrite(EN_PIN, HIGH);
-  delay(2000); // pause for 2s
 }
