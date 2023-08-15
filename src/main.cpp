@@ -34,7 +34,7 @@
 
 TMC2209Stepper driver(&SERIAL_PORT, R_SENSE, DRIVER_ADDRESS);
 AsyncWebServer server(80);
-TaskHandle_t MoveStepperTask;
+TaskHandle_t moveStepperTask;
 
 // blinds settings
 unsigned int totalSteps = STEPS_PER_REV * TOTAL_ROTATIONS;
@@ -105,9 +105,9 @@ void runServer() {
       Serial.println(desiredPosition);
 
       // stop any running tasks
-      if (MoveStepperTask != NULL) {
-        vTaskDelete(MoveStepperTask);
-        MoveStepperTask = NULL;
+      if (moving) {
+        vTaskDelete(moveStepperTask);
+        moveStepperTask = NULL;
       }
 
       esp_task_wdt_init(60, false);
@@ -117,7 +117,7 @@ void runServer() {
         10000,                // Stack size
         NULL,                 // Parameters
         1,                    // Priority
-        &MoveStepperTask,     // Task handle
+        &moveStepperTask,     // Task handle
         0                     // Core number
       );
 
