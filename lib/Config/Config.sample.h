@@ -6,32 +6,19 @@
 #define HOSTNAME "smart-blinds"
 
 /**
- * Seconds it takes to open/close your blinds
+ * Number of revolutions it takes to open/close your blinds
  */
-#define DEFAULT_SECONDS_TO_CLOSE 10
-#define DEFAULT_SECONDS_TO_OPEN 15
+#define TOTAL_ROTATIONS 10
 
 /**
- * Servo Reset Settings
- * 
- * MG 995/6 servos stop spinning after 14 seconds
- * and need a 150ms "break" before we can use again
- * 
- * Set SERVO_RESET_REQUIRED to true if your servo requires this
+ * Speed to open and close blinds
+ * Set as a delay between steps in microseconds
  */
-#define SERVO_RESET_REQUIRED false
-#define SERVO_RESET_EVERY_SECONDS 14
-#define SERVO_RESET_DELAY_MILLISECONDS 150
+#define STEPS_DELAY_FAST 600
+#define STEPS_DELAY_SLOW 900
 
 /**
- * Servo Stop Settings
- * 
- * DS 3218/3225 MG servos keep spinning after detatching
- * Need to set duty cycle to zero point (usually 90)
- * for a few ms for it stop spinning
- * 
- * Set SERVO_STOP_SIGNAL_REQUIRED to true if your servo requires this
+ * Time it takes to fully open/close blinds
+ * Set as a maximum time in seconds
  */
-#define SERVO_STOP_SIGNAL_REQUIRED false
-#define SERVO_STOP_DUTYCYCLE 90
-#define SERVO_STOP_SIGNAL_MILLISECONDS 50
+#define MAX_SPIN_TIME 180
