@@ -10,36 +10,26 @@
 #include <Config.h>
 #include "esp_task_wdt.h"
 
-#define LED_PIN 2
+#define LED_PIN           2       // Onboard LED pin
+#define EN_PIN            25      // Driver enable pin
+#define DIR_PIN           26      // Driver direction pin
+#define STEP_PIN          27      // Driver step pin
+#define CLK_PIN           14      // Clock pin
+#define DRIVER_ADDRESS    0b00    // TMC2209 Driver address according to MS1 and MS2
+#define R_SENSE           0.11f   // SilentStepStick series use 0.11
+#define SERIAL_PORT       Serial2 // Serial port for TMC2209 driver (UART)
+#define SERIAL_BAUD_RATE  115200
 
-#define SERIAL_PORT Serial2
-
-#define EN_PIN    25  // Driver enable pin
-#define DIR_PIN   26  // Driver direction pin
-#define STEP_PIN  27  // Driver step pin
-
-#define CLK             14    // Clock
-#define DRIVER_ADDRESS  0b00  // TMC2209 Driver address according to MS1 and MS2
-#define R_SENSE         0.11f // SilentStepStick series use 0.11
-
-#define STEPS_DELAY_FAST  750   // delay between steps in microseconds
-#define STEPS_DELAY_SLOW  1000  // delay between steps in microseconds
-
-#define STEPS_PER_REV 1600  // number of steps per revolution
-#define MOTOR_CURRENT 2800  // motor current in milliamps
-#define MICROSTEPS    256   // microsteps per step
-#define TOTAL_ROTATIONS 10  // total number of rotations to open/close blinds
-
-#define SERIAL_BAUD_RATE    115200
+#define STEPS_PER_REV   1600  // number of steps per revolution
+#define MOTOR_CURRENT   2800  // motor current in milliamps
+#define MICROSTEPS      256   // microsteps per step
+#define TOTAL_STEPS     (STEPS_PER_REV * TOTAL_ROTATIONS)
 
 TMC2209Stepper driver(&SERIAL_PORT, R_SENSE, DRIVER_ADDRESS);
 AsyncWebServer server(80);
 TaskHandle_t moveStepperTask;
 
-// blinds settings
-unsigned int totalSteps = STEPS_PER_REV * TOTAL_ROTATIONS;
-
-// position vars (0 is closed, 100 is open)
+// position & state vars (0 is closed, 100 is open)
 double currentPosition = 100;
 double desiredPosition = 100;
 bool moving = false;
@@ -62,7 +52,7 @@ void moveStepper(int steps, int dir) {
 
     // update current position
     int direction = dir == 1 ? -1 : 1;
-    currentPosition = currentPosition + (direction * 1.0 / totalSteps * 100);
+    currentPosition = currentPosition + (direction * 1.0 / TOTAL_STEPS * 100);
   }
 
   moving = false;
@@ -82,12 +72,12 @@ void moveBlinds(void * pvParameters) {
     dir = 1;
     delta = currentPosition - desiredPosition;
   }
-  int steps = delta * totalSteps / 100;
+  int steps = delta * TOTAL_STEPS / 100;
 
   if (steps != 0) {
     moveStepper(steps, dir);
   }
-  vTaskDelete(NULL);  // end task
+  vTaskDelete(NULL); // end task
 }
 
 void runServer() {
@@ -110,7 +100,7 @@ void runServer() {
         moveStepperTask = NULL;
       }
 
-      esp_task_wdt_init(60, false);
+      esp_task_wdt_init(MAX_SPIN_TIME, false);
       xTaskCreatePinnedToCore(
         moveBlinds,           // Task function
         "MoveBlindsTask",     // Task name
@@ -131,23 +121,21 @@ void runServer() {
 }
 
 void setup() {
-  Serial.begin(SERIAL_BAUD_RATE);           // initialize serial0 for logging
-  Serial2.begin(SERIAL_BAUD_RATE);          // initialize serial2 for UART motor control
-  driver.begin();                           // Initialize driver over UART
+  Serial.begin(SERIAL_BAUD_RATE);     // initialize serial0 for logging
+  Serial2.begin(SERIAL_BAUD_RATE);    // initialize serial2 for UART motor control
+  driver.begin();                     // Initialize driver over UART
 
-  Serial.println("init start");
-  
+  Serial.println("setup start");
+
   // Set pinmodes
   pinMode(EN_PIN, OUTPUT);
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
 
-  // Turn off lights
-  digitalWrite(LED_PIN, LOW);
-
-  // Enable driver
-  digitalWrite(EN_PIN, LOW);
+  // Turn on light & disable driver
+  digitalWrite(LED_PIN, HIGH);
+  digitalWrite(EN_PIN, HIGH);
 
   driver.begin();
   driver.rms_current(MOTOR_CURRENT);  // set motor RMS current
@@ -178,6 +166,9 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   runServer();
+
+  digitalWrite(LED_PIN, LOW); // turn off light
+  Serial.println("setup complete");
 }
 
 void loop() {
