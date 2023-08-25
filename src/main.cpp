@@ -1,7 +1,7 @@
 /**
  * ESP32 smart blinds
  * Using a stepper motor
- * Powered by a TMC2209 stepper driver
+ * Powered by a TMC2209 driver
  */
 
 #include <EEPROM.h>
@@ -65,7 +65,7 @@ void moveStepper(int steps, int dir) {
 
 void moveBlinds(void * pvParameters) {
   int dir = 0;
-  int delta = 0;
+  double delta = 0;
   if (desiredPosition > currentPosition) {
     // move up (opening)
     dir = 0;
@@ -91,9 +91,15 @@ void runServer() {
 
   // set position
   server.on("/set", HTTP_POST, [] (AsyncWebServerRequest *request) {
+    bool validRequest = false;
+
     if (request->hasParam("position")) {
       AsyncWebParameter* p = request->getParam("position");
       desiredPosition = p->value().toDouble();
+      validRequest = desiredPosition >= 0 && desiredPosition <= 100;
+    }
+
+    if (validRequest) {
       Serial.print("desired position: ");
       Serial.println(desiredPosition);
 
