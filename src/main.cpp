@@ -11,6 +11,7 @@
 #include "esp_task_wdt.h"
 
 #define LED_PIN           2       // Onboard LED pin
+#define RELAY_PIN         22      // Relay pin
 #define EN_PIN            25      // Driver enable pin
 #define DIR_PIN           26      // Driver direction pin
 #define STEP_PIN          27      // Driver step pin
@@ -42,6 +43,7 @@ void moveStepper(int steps, int dir) {
   int stepsDelay = dir ? STEPS_DELAY_FAST : STEPS_DELAY_SLOW;
 
   moving = true;
+  digitalWrite(RELAY_PIN, HIGH); // turn on relay
   digitalWrite(EN_PIN, LOW); // enable stepper motor driver
   digitalWrite(DIR_PIN, dir);
   for (int i = 0; i < steps; i++) {
@@ -58,6 +60,7 @@ void moveStepper(int steps, int dir) {
   moving = false;
   digitalWrite(EN_PIN, HIGH); // disable stepper motor driver
   digitalWrite(LED_PIN, LOW); // turn off light
+  digitalWrite(RELAY_PIN, LOW); // turn off relay
 }
 
 void moveBlinds(void * pvParameters) {
@@ -132,10 +135,12 @@ void setup() {
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
 
-  // Turn on light & disable driver
+  // Turn on light, turn off driver and relay
   digitalWrite(LED_PIN, HIGH);
   digitalWrite(EN_PIN, HIGH);
+  digitalWrite(RELAY_PIN, LOW);
 
   driver.begin();
   driver.rms_current(MOTOR_CURRENT);  // set motor RMS current
